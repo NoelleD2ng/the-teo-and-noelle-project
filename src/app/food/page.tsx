@@ -612,17 +612,17 @@ export default function FoodPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', maxWidth: 540, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
+            style={{ background: '#fff', borderRadius: 20, maxWidth: 540, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 80px rgba(0,0,0,0.4)', isolation: 'isolate' }}
           >
             {/* ── VIEW MODE ── */}
             {!editing && (
               <>
                 {selected.image_url ? (
-                  <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+                  <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block', flexShrink: 0, borderRadius: '20px 20px 0 0' }} />
                 ) : (
-                  <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0 }} />
+                  <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0, borderRadius: '20px 20px 0 0' }} />
                 )}
-                <div style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1 }}>
+                <div style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1, borderRadius: '0 0 20px 20px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                     <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1A0D05', lineHeight: 1.2, fontFamily: 'var(--font-serif)', paddingRight: 16 }}>
                       {selected.title}
@@ -697,30 +697,36 @@ export default function FoodPage() {
 
             {/* ── EDIT MODE ── */}
             {editing && (
-              <form onSubmit={updateRecipe} style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <form onSubmit={updateRecipe} style={{ overflowY: 'auto', overflowX: 'hidden', padding: '24px 28px 28px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12, borderRadius: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#1A0D05' }}>Edit Recipe</p>
                   <button type="button" onClick={() => setEditing(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070' }}><X size={16} /></button>
                 </div>
 
                 {/* Photo */}
-                <div
-                  style={{ border: '2px dashed rgba(196,120,74,0.25)', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', background: '#FDF6EE', transition: 'border-color 0.2s' }}
-                  onClick={() => editFileRef.current?.click()}
-                >
-                  {editPreview ? (
-                    <img src={editPreview} alt="preview" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', display: 'block' }} />
-                  ) : selected.image_url ? (
-                    <div style={{ position: 'relative' }}>
-                      <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 180, objectFit: 'cover', display: 'block', opacity: 0.6 }} />
-                      <p style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#1A0D05', fontWeight: 500 }}>Click to replace photo</p>
-                    </div>
-                  ) : (
-                    <div style={{ padding: 20, textAlign: 'center' }}>
-                      <p style={{ fontSize: 24, marginBottom: 4 }}>📷</p>
-                      <p style={{ fontSize: 12, color: '#A89070' }}>Add a photo (optional)</p>
-                    </div>
-                  )}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#8B6A48', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Photo</p>
+                  <div
+                    style={{ border: '2px dashed rgba(196,120,74,0.3)', borderRadius: 12, overflow: 'hidden', cursor: 'pointer', background: '#FDF6EE' }}
+                    onClick={() => editFileRef.current?.click()}
+                  >
+                    {editPreview ? (
+                      <img src={editPreview} alt="preview" style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block' }} />
+                    ) : selected.image_url ? (
+                      <div style={{ position: 'relative' }}>
+                        <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 160, objectFit: 'cover', display: 'block', opacity: 0.55 }} />
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 4 }}>
+                          <p style={{ fontSize: 20 }}>📷</p>
+                          <p style={{ fontSize: 12, color: '#1A0D05', fontWeight: 600 }}>Click to replace photo</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '20px', textAlign: 'center' }}>
+                        <p style={{ fontSize: 24, marginBottom: 4 }}>📷</p>
+                        <p style={{ fontSize: 12, color: '#A89070' }}>Click to add a photo</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <input ref={editFileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setEditFile(f); setEditPreview(URL.createObjectURL(f)) } }} style={{ display: 'none' }} />
 
