@@ -12,13 +12,17 @@ export default function WishlistCard() {
   const [proposedBy, setProposedBy] = useState<'teo' | 'noelle'>('teo')
   const [adding, setAdding] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
+  function fetchItems() {
     supabase
       .from('wishlist')
       .select('*')
       .order('created_at', { ascending: true })
       .then(({ data }) => setItems(data ?? []))
+  }
+
+  useEffect(() => {
+    if (!open) return
+    fetchItems()
   }, [open])
 
   async function addItem(e: React.FormEvent) {
@@ -112,16 +116,36 @@ export default function WishlistCard() {
         >
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
-            <p style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: '8px',
-              letterSpacing: '0.5em',
-              textTransform: 'uppercase',
-              color: 'rgba(200,100,160,0.55)',
-              fontWeight: 300,
-            }}>
-              our wishlist
-            </p>
+            <div className="flex items-center gap-3">
+              <p style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '8px',
+                letterSpacing: '0.5em',
+                textTransform: 'uppercase',
+                color: 'rgba(200,100,160,0.55)',
+                fontWeight: 300,
+              }}>
+                our wishlist
+              </p>
+              <button
+                onClick={fetchItems}
+                title="refresh"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'rgba(160,60,120,0.35)',
+                  fontSize: 11,
+                  lineHeight: 1,
+                  padding: 0,
+                  transition: 'color 0.3s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(210,110,170,0.65)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(160,60,120,0.35)')}
+              >
+                ↻
+              </button>
+            </div>
             <button
               onClick={() => setShowForm(v => !v)}
               style={{
