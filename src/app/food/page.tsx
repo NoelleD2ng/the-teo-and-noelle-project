@@ -61,7 +61,7 @@ export default function FoodPage() {
   useEffect(() => { fetchPhotos(); fetchRecipes() }, [])
 
   async function fetchPhotos() {
-    const { data } = await supabase.from('FoodPhotos').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('food_photos').select('*').order('created_at', { ascending: false })
     setPhotos(data ?? []); setPhotosLoading(false)
   }
   async function fetchRecipes() {
@@ -82,7 +82,7 @@ export default function FoodPage() {
     const { error: upErr } = await supabase.storage.from('Memories').upload(path, file)
     if (upErr) { alert('Upload failed: ' + upErr.message); setUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('Memories').getPublicUrl(path)
-    const { error: insErr } = await supabase.from('FoodPhotos').insert({ image_url: publicUrl, caption: caption.trim() || null })
+    const { error: insErr } = await supabase.from('food_photos').insert({ image_url: publicUrl, caption: caption.trim() || null })
     if (insErr) { alert('Save failed: ' + insErr.message); setUploading(false); return }
     setFile(null); setPreview(null); setCaption('')
     if (fileRef.current) fileRef.current.value = ''
@@ -92,7 +92,7 @@ export default function FoodPage() {
   async function deletePhoto(photo: FoodPhoto) {
     const path = photo.image_url.split('/Memories/')[1]
     if (path) await supabase.storage.from('Memories').remove([path])
-    await supabase.from('FoodPhotos').delete().eq('id', photo.id)
+    await supabase.from('food_photos').delete().eq('id', photo.id)
     setLightbox(null); setPhotos(prev => prev.filter(p => p.id !== photo.id))
   }
 
@@ -114,7 +114,7 @@ export default function FoodPage() {
       const { data: { publicUrl } } = supabase.storage.from('Memories').getPublicUrl(path)
       imageUrl = publicUrl
       // also save to food memories
-      await supabase.from('FoodPhotos').insert({ image_url: publicUrl, caption: form.title.trim() })
+      await supabase.from('food_photos').insert({ image_url: publicUrl, caption: form.title.trim() })
     }
 
     const { error } = await supabase.from('recipes').insert({
@@ -166,7 +166,7 @@ export default function FoodPage() {
       if (upErr) { alert('Photo upload failed: ' + upErr.message); setUpdating(false); return }
       const { data: { publicUrl } } = supabase.storage.from('Memories').getPublicUrl(path)
       imageUrl = publicUrl
-      await supabase.from('FoodPhotos').insert({ image_url: publicUrl, caption: editForm.title.trim() })
+      await supabase.from('food_photos').insert({ image_url: publicUrl, caption: editForm.title.trim() })
     }
 
     const { error } = await supabase.from('recipes').update({
