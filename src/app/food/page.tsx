@@ -47,6 +47,9 @@ export default function FoodPage() {
   const [saving, setSaving]                 = useState(false)
   const [form, setForm]                     = useState<RecipeForm>(emptyForm)
   const [selected, setSelected]             = useState<Recipe | null>(null)
+  const [recipeFile, setRecipeFile]         = useState<File | null>(null)
+  const [recipePreview, setRecipePreview]   = useState<string | null>(null)
+  const recipeFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { fetchPhotos(); fetchRecipes() }, [])
 
@@ -86,17 +89,38 @@ export default function FoodPage() {
     setLightbox(null); setPhotos(prev => prev.filter(p => p.id !== photo.id))
   }
 
+  function onRecipeFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return
+    setRecipeFile(f); setRecipePreview(URL.createObjectURL(f))
+  }
+
   async function saveRecipe(e: React.FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return
     setSaving(true)
+
+    let imageUrl: string | null = null
+    if (recipeFile) {
+      const ext = recipeFile.name.split('.').pop()
+      const path = `${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('FoodPhotos').upload(path, recipeFile)
+      if (upErr) { alert('Photo upload failed: ' + upErr.message); setSaving(false); return }
+      const { data: { publicUrl } } = supabase.storage.from('FoodPhotos').getPublicUrl(path)
+      imageUrl = publicUrl
+      // also save to food memories
+      await supabase.from('food_photos').insert({ image_url: publicUrl, caption: form.title.trim() })
+    }
+
     const { error } = await supabase.from('recipes').insert({
       title: form.title.trim(), description: form.description.trim() || null,
       cuisine: form.cuisine.trim() || null, difficulty: form.difficulty || null,
       ingredients: form.ingredients.filter(i => i.trim()), steps: form.steps.filter(s => s.trim()),
       notes: form.notes.trim() || null, rating: form.rating, tried: form.tried,
+      image_url: imageUrl,
     })
     if (error) { alert('Failed: ' + error.message); setSaving(false); return }
-    setForm(emptyForm); setShowForm(false); await fetchRecipes(); setSaving(false)
+    setForm(emptyForm); setRecipeFile(null); setRecipePreview(null)
+    if (recipeFileRef.current) recipeFileRef.current.value = ''
+    setShowForm(false); await fetchPhotos(); await fetchRecipes(); setSaving(false)
   }
 
   async function deleteRecipe(recipe: Recipe) {
@@ -316,6 +340,22 @@ export default function FoodPage() {
                   </button>
                 </div>
 
+                {/* Photo upload */}
+                <div
+                  style={{ border: '2px dashed rgba(196,120,74,0.25)', borderRadius: 14, padding: recipePreview ? 0 : 24, textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: '#FDF6EE', overflow: 'hidden', transition: 'border-color 0.2s' }}
+                  onClick={() => recipeFileRef.current?.click()}
+                >
+                  {recipePreview ? (
+                    <img src={recipePreview} alt="preview" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 28, marginBottom: 6 }}>📷</p>
+                      <p style={{ fontSize: 12, color: '#A89070' }}>Add a photo (optional) — also saves to Food Memories</p>
+                    </>
+                  )}
+                </div>
+                <input ref={recipeFileRef} type="file" accept="image/*" onChange={onRecipeFileChange} style={{ display: 'none' }} />
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Recipe name *" className={inp} />
                   <input value={form.cuisine} onChange={e => setForm(f => ({ ...f, cuisine: e.target.value }))} placeholder="Cuisine (e.g. Italian)" className={inp} />
@@ -428,8 +468,12 @@ export default function FoodPage() {
                       transition: 'transform 0.2s, box-shadow 0.2s',
                     }}
                   >
-                    {/* Accent bar */}
-                    <div style={{ height: 4, background: 'linear-gradient(to right, #C4784A, #8B4513)' }} />
+                    {/* Photo or accent bar */}
+                    {recipe.image_url ? (
+                      <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{ height: 4, background: 'linear-gradient(to right, #C4784A, #8B4513)' }} />
+                    )}
                     <div style={{ padding: '20px 22px 22px' }}>
                       {recipe.cuisine && (
                         <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 8, fontWeight: 500 }}>
@@ -504,7 +548,11 @@ export default function FoodPage() {
             onClick={e => e.stopPropagation()}
             style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', maxWidth: 540, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
           >
-            <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0 }} />
+            {selected.image_url ? (
+              <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+            ) : (
+              <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0 }} />
+            )}
             <div style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                 <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1A0D05', lineHeight: 1.2, fontFamily: 'var(--font-serif)', paddingRight: 16 }}>
