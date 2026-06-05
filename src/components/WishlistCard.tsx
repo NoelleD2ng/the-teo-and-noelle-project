@@ -23,6 +23,15 @@ export default function WishlistCard() {
   useEffect(() => {
     if (!open) return
     fetchItems()
+
+    const channel = supabase
+      .channel('wishlist-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wishlist' }, () => {
+        fetchItems()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [open])
 
   async function addItem(e: React.FormEvent) {
