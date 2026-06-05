@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import WishlistCard from '@/components/WishlistCard'
 
 const embers = [
   { top: '8%',  left: '12%', size: 1.5, delay: '0s',   dur: '9s'  },
@@ -223,8 +224,11 @@ export default function SecretPage() {
           ))}
         </div>
 
+        {/* Wishlist */}
+        <WishlistCard />
+
         {/* Back link */}
-        <div className="secret-back mt-20">
+        <div className="secret-back mt-4">
           <Link
             href="/"
             style={{

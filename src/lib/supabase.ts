@@ -112,3 +112,14 @@ export type Place = {
   metadata: PlaceMetadata | null
   created_at: string
 }
+
+export type WishlistItem = {
+  id: string
+  title: string
+  notes: string | null
+  proposed_by: 'teo' | 'noelle'
+  approved_by_teo: boolean
+  approved_by_noelle: boolean
+  tried: boolean
+  created_at: string
+}
