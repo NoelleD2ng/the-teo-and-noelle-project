@@ -79,9 +79,9 @@ export default function FoodPage() {
     setUploading(true)
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}.${ext}`
-    const { error: upErr } = await supabase.storage.from('FoodPhotos').upload(path, file)
+    const { error: upErr } = await supabase.storage.from('Memories').upload(path, file)
     if (upErr) { alert('Upload failed: ' + upErr.message); setUploading(false); return }
-    const { data: { publicUrl } } = supabase.storage.from('FoodPhotos').getPublicUrl(path)
+    const { data: { publicUrl } } = supabase.storage.from('Memories').getPublicUrl(path)
     const { error: insErr } = await supabase.from('food_photos').insert({ image_url: publicUrl, caption: caption.trim() || null })
     if (insErr) { alert('Save failed: ' + insErr.message); setUploading(false); return }
     setFile(null); setPreview(null); setCaption('')
@@ -90,8 +90,8 @@ export default function FoodPage() {
   }
 
   async function deletePhoto(photo: FoodPhoto) {
-    const path = photo.image_url.split('/FoodPhotos/')[1]
-    if (path) await supabase.storage.from('FoodPhotos').remove([path])
+    const path = photo.image_url.split('/Memories/')[1]
+    if (path) await supabase.storage.from('Memories').remove([path])
     await supabase.from('food_photos').delete().eq('id', photo.id)
     setLightbox(null); setPhotos(prev => prev.filter(p => p.id !== photo.id))
   }
@@ -109,9 +109,9 @@ export default function FoodPage() {
     if (recipeFile) {
       const ext = recipeFile.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('FoodPhotos').upload(path, recipeFile)
+      const { error: upErr } = await supabase.storage.from('Memories').upload(path, recipeFile)
       if (upErr) { alert('Photo upload failed: ' + upErr.message); setSaving(false); return }
-      const { data: { publicUrl } } = supabase.storage.from('FoodPhotos').getPublicUrl(path)
+      const { data: { publicUrl } } = supabase.storage.from('Memories').getPublicUrl(path)
       imageUrl = publicUrl
       // also save to food memories
       await supabase.from('food_photos').insert({ image_url: publicUrl, caption: form.title.trim() })
@@ -162,9 +162,9 @@ export default function FoodPage() {
     if (editFile) {
       const ext = editFile.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('FoodPhotos').upload(path, editFile)
+      const { error: upErr } = await supabase.storage.from('Memories').upload(path, editFile)
       if (upErr) { alert('Photo upload failed: ' + upErr.message); setUpdating(false); return }
-      const { data: { publicUrl } } = supabase.storage.from('FoodPhotos').getPublicUrl(path)
+      const { data: { publicUrl } } = supabase.storage.from('Memories').getPublicUrl(path)
       imageUrl = publicUrl
       await supabase.from('food_photos').insert({ image_url: publicUrl, caption: editForm.title.trim() })
     }
