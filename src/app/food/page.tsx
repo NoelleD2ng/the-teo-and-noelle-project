@@ -19,475 +19,474 @@ type RecipeForm = {
 }
 
 const emptyForm: RecipeForm = {
-  title: '',
-  description: '',
-  cuisine: '',
-  difficulty: '',
-  ingredients: [''],
-  steps: [''],
-  notes: '',
-  rating: 0,
-  tried: false,
+  title: '', description: '', cuisine: '', difficulty: '',
+  ingredients: [''], steps: [''], notes: '', rating: 0, tried: false,
 }
 
-const TILTS = ['-rotate-1', 'rotate-1', '-rotate-2', 'rotate-2', '-rotate-1', 'rotate-1']
-
 const difficultyStyle: Record<'easy' | 'medium' | 'hard', string> = {
-  easy:   'bg-green-50 text-green-700 border-green-200',
-  medium: 'bg-amber-50 text-amber-700 border-amber-200',
-  hard:   'bg-red-50 text-red-700 border-red-200',
+  easy:   'bg-[#3A5C2E]/15 text-[#3A5C2E]',
+  medium: 'bg-[#8B5E1A]/15 text-[#8B5E1A]',
+  hard:   'bg-[#7A1E1E]/15 text-[#7A1E1E]',
 }
 
 export default function FoodPage() {
   const [tab, setTab] = useState<Tab>('memories')
 
-  // ── Food memories ──────────────────────────────────────────
-  const [photos, setPhotos] = useState<FoodPhoto[]>([])
+  const [photos, setPhotos]               = useState<FoodPhoto[]>([])
   const [photosLoading, setPhotosLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [caption, setCaption] = useState('')
-  const [preview, setPreview] = useState<string | null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [lightbox, setLightbox] = useState<FoodPhoto | null>(null)
+  const [uploading, setUploading]         = useState(false)
+  const [caption, setCaption]             = useState('')
+  const [preview, setPreview]             = useState<string | null>(null)
+  const [file, setFile]                   = useState<File | null>(null)
+  const [lightbox, setLightbox]           = useState<FoodPhoto | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // ── Recipes ────────────────────────────────────────────────
-  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [recipes, setRecipes]               = useState<Recipe[]>([])
   const [recipesLoading, setRecipesLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState<RecipeForm>(emptyForm)
-  const [selected, setSelected] = useState<Recipe | null>(null)
+  const [showForm, setShowForm]             = useState(false)
+  const [saving, setSaving]                 = useState(false)
+  const [form, setForm]                     = useState<RecipeForm>(emptyForm)
+  const [selected, setSelected]             = useState<Recipe | null>(null)
 
-  useEffect(() => {
-    fetchPhotos()
-    fetchRecipes()
-  }, [])
+  useEffect(() => { fetchPhotos(); fetchRecipes() }, [])
 
   async function fetchPhotos() {
     const { data } = await supabase.from('food_photos').select('*').order('created_at', { ascending: false })
-    setPhotos(data ?? [])
-    setPhotosLoading(false)
+    setPhotos(data ?? []); setPhotosLoading(false)
   }
-
   async function fetchRecipes() {
     const { data } = await supabase.from('recipes').select('*').order('created_at', { ascending: false })
-    setRecipes(data ?? [])
-    setRecipesLoading(false)
+    setRecipes(data ?? []); setRecipesLoading(false)
   }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    if (!f) return
-    setFile(f)
-    setPreview(URL.createObjectURL(f))
+    const f = e.target.files?.[0]; if (!f) return
+    setFile(f); setPreview(URL.createObjectURL(f))
   }
 
   async function uploadPhoto(e: React.FormEvent) {
-    e.preventDefault()
-    if (!file) return
+    e.preventDefault(); if (!file) return
     setUploading(true)
     const ext = file.name.split('.').pop()
     const path = `${Date.now()}.${ext}`
     const { error: upErr } = await supabase.storage.from('FoodPhotos').upload(path, file)
     if (upErr) { alert('Upload failed: ' + upErr.message); setUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('FoodPhotos').getPublicUrl(path)
-    const { error: insErr } = await supabase.from('food_photos').insert({
-      image_url: publicUrl,
-      caption: caption.trim() || null,
-    })
+    const { error: insErr } = await supabase.from('food_photos').insert({ image_url: publicUrl, caption: caption.trim() || null })
     if (insErr) { alert('Save failed: ' + insErr.message); setUploading(false); return }
     setFile(null); setPreview(null); setCaption('')
     if (fileRef.current) fileRef.current.value = ''
-    await fetchPhotos()
-    setUploading(false)
+    await fetchPhotos(); setUploading(false)
   }
 
   async function deletePhoto(photo: FoodPhoto) {
     const path = photo.image_url.split('/FoodPhotos/')[1]
     if (path) await supabase.storage.from('FoodPhotos').remove([path])
     await supabase.from('food_photos').delete().eq('id', photo.id)
-    setLightbox(null)
-    setPhotos(prev => prev.filter(p => p.id !== photo.id))
+    setLightbox(null); setPhotos(prev => prev.filter(p => p.id !== photo.id))
   }
 
   async function saveRecipe(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.title.trim()) return
+    e.preventDefault(); if (!form.title.trim()) return
     setSaving(true)
     const { error } = await supabase.from('recipes').insert({
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      cuisine: form.cuisine.trim() || null,
-      difficulty: form.difficulty || null,
-      ingredients: form.ingredients.filter(i => i.trim()),
-      steps: form.steps.filter(s => s.trim()),
-      notes: form.notes.trim() || null,
-      rating: form.rating,
-      tried: form.tried,
+      title: form.title.trim(), description: form.description.trim() || null,
+      cuisine: form.cuisine.trim() || null, difficulty: form.difficulty || null,
+      ingredients: form.ingredients.filter(i => i.trim()), steps: form.steps.filter(s => s.trim()),
+      notes: form.notes.trim() || null, rating: form.rating, tried: form.tried,
     })
     if (error) { alert('Failed: ' + error.message); setSaving(false); return }
-    setForm(emptyForm)
-    setShowForm(false)
-    await fetchRecipes()
-    setSaving(false)
+    setForm(emptyForm); setShowForm(false); await fetchRecipes(); setSaving(false)
   }
 
   async function deleteRecipe(recipe: Recipe) {
     await supabase.from('recipes').delete().eq('id', recipe.id)
-    setSelected(null)
-    setRecipes(prev => prev.filter(r => r.id !== recipe.id))
+    setSelected(null); setRecipes(prev => prev.filter(r => r.id !== recipe.id))
   }
 
-  const inp = 'w-full px-3 py-2 rounded-xl text-sm text-[#2C1A0E] placeholder:text-[#AE9B8E] focus:outline-none bg-[#F5EFE8] border border-[#E8DDD4] focus:border-[#C4784A]/40 transition-colors'
+  const inp = 'w-full px-3 py-2.5 rounded-lg text-sm text-[#1A0D05] placeholder:text-[#A89070] focus:outline-none bg-[#F5EBD8] border border-[#E0C9A8] focus:border-[#C4784A]/60 transition-colors'
 
   return (
-    <div className="pt-20 p-6 md:p-10 max-w-5xl mx-auto">
+    <div style={{ background: '#F7EDE0', minHeight: '100vh' }}>
 
-      {/* ── Header ──────────────────────────────────────────── */}
-      <div className="mb-8">
-        <p className="text-[10px] tracking-[0.3em] uppercase text-[#C4784A]/70 mb-1">together</p>
-        <h1 className="text-3xl font-semibold text-[#2C1A0E]">Food 🍽️</h1>
-        <p className="text-[#7A6155] mt-1 text-sm">the meals, the memories, the recipes</p>
+      {/* ── Dark editorial header ─────────────────────────────── */}
+      <div
+        style={{
+          background: 'linear-gradient(160deg, #1A0D05 0%, #2E1608 60%, #3D200A 100%)',
+          paddingTop: 80,
+          paddingBottom: 48,
+          paddingLeft: 40,
+          paddingRight: 40,
+        }}
+      >
+        <p style={{ fontSize: 10, letterSpacing: '0.55em', textTransform: 'uppercase', color: 'rgba(196,120,74,0.7)', marginBottom: 16, fontWeight: 300 }}>
+          teo &amp; noelle
+        </p>
+        <h1
+          style={{
+            fontFamily: 'var(--font-serif)', fontWeight: 400, fontStyle: 'italic',
+            fontSize: 'clamp(3.5rem, 9vw, 7rem)', lineHeight: 0.95,
+            color: '#F5E6D0', letterSpacing: '-0.02em', marginBottom: 20,
+          }}
+        >
+          Food
+        </h1>
+        <p style={{ fontSize: 12, letterSpacing: '0.35em', textTransform: 'uppercase', color: 'rgba(245,230,208,0.35)', fontWeight: 300 }}>
+          the meals &nbsp;·&nbsp; the memories &nbsp;·&nbsp; the recipes
+        </p>
+
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 40 }}>
+          {([['memories', '📸  Food Memories'], ['recipes', '📖  Recipes']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                background: tab === key ? '#C4784A' : 'rgba(245,230,208,0.1)',
+                color: tab === key ? '#fff' : 'rgba(245,230,208,0.55)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── Tabs ────────────────────────────────────────────── */}
-      <div className="flex gap-6 mb-8 border-b border-[#E8DDD4]">
-        {([['memories', '📸 Food Memories'], ['recipes', '📖 Recipes']] as const).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`pb-3 text-sm font-medium transition-all border-b-2 -mb-px ${
-              tab === key
-                ? 'text-[#C4784A] border-[#C4784A]'
-                : 'text-[#7A6155]/60 border-transparent hover:text-[#7A6155]'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ── Content area ─────────────────────────────────────── */}
+      <div style={{ padding: '40px 40px 80px', maxWidth: 1100, margin: '0 auto' }}>
 
-      {/* ══ FOOD MEMORIES TAB ══════════════════════════════════ */}
-      {tab === 'memories' && (
-        <>
-          <form
-            onSubmit={uploadPhoto}
-            className="rounded-2xl border border-[#E8DDD4] bg-white p-5 mb-10 max-w-md"
-            style={{ boxShadow: '0 2px 16px rgba(44,26,14,0.06)' }}
-          >
-            <p className="text-sm font-medium text-[#2C1A0E] mb-3">Add a food memory</p>
-            <div
-              className="border-2 border-dashed border-[#E8DDD4] rounded-xl p-6 text-center cursor-pointer hover:border-[#C4784A]/40 transition-colors mb-3 bg-[#FDFAF7]"
-              onClick={() => fileRef.current?.click()}
-            >
-              {preview ? (
-                <img src={preview} alt="preview" className="max-h-48 mx-auto rounded-lg object-cover" />
-              ) : (
-                <>
-                  <p className="text-3xl mb-2">🍜</p>
-                  <p className="text-sm text-[#AE9B8E]">Click to add a food photo</p>
-                </>
-              )}
-            </div>
-            <input ref={fileRef} type="file" accept="image/*" onChange={onFileChange} className="hidden" />
-            <input
-              value={caption}
-              onChange={e => setCaption(e.target.value)}
-              placeholder="What was it? Where? (optional)"
-              className={`${inp} mb-3`}
-            />
-            <button
-              type="submit"
-              disabled={!file || uploading}
-              className="w-full bg-[#C4784A] hover:bg-[#B36840] disabled:opacity-40 text-white py-2 rounded-xl text-sm transition-colors"
-            >
-              {uploading ? 'Uploading...' : 'Save Memory'}
-            </button>
-          </form>
-
-          {photosLoading ? (
-            <div className="text-center py-16 text-[#AE9B8E]">
-              <p className="text-4xl mb-3">🍽️</p>
-              <p className="text-sm">loading...</p>
-            </div>
-          ) : photos.length === 0 ? (
-            <div className="text-center py-16 text-[#AE9B8E]">
-              <p className="text-4xl mb-3">🍽️</p>
-              <p className="text-sm">no food memories yet — add your first one!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-              {photos.map((p, i) => (
-                <div
-                  key={p.id}
-                  className={`polaroid ${TILTS[i % TILTS.length]} cursor-pointer`}
-                  onClick={() => setLightbox(p)}
-                >
-                  <img src={p.image_url} alt={p.caption ?? 'food'} className="w-full aspect-square object-cover" />
-                  {p.caption && (
-                    <p className="text-center text-xs mt-2 text-[#7A6155] font-light truncate">{p.caption}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ══ RECIPES TAB ════════════════════════════════════════ */}
-      {tab === 'recipes' && (
-        <>
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-sm text-[#7A6155]">
-              {recipes.length} recipe{recipes.length !== 1 ? 's' : ''}
-            </p>
-            <button
-              onClick={() => setShowForm(v => !v)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#C4784A] hover:bg-[#B36840] text-white text-sm rounded-xl transition-colors"
-            >
-              <Plus size={14} />
-              Add Recipe
-            </button>
-          </div>
-
-          {/* ── Add recipe form ───────────────────────────────── */}
-          {showForm && (
+        {/* ══ FOOD MEMORIES ══════════════════════════════════════ */}
+        {tab === 'memories' && (
+          <>
+            {/* Upload strip */}
             <form
-              onSubmit={saveRecipe}
-              className="rounded-2xl border border-[#E8DDD4] bg-white p-6 mb-8"
-              style={{ boxShadow: '0 2px 16px rgba(44,26,14,0.06)' }}
+              onSubmit={uploadPhoto}
+              style={{
+                background: '#fff',
+                borderRadius: 20,
+                padding: '24px 28px',
+                marginBottom: 40,
+                maxWidth: 480,
+                boxShadow: '0 4px 24px rgba(26,13,5,0.1)',
+                border: '1px solid rgba(196,120,74,0.15)',
+              }}
             >
-              <div className="flex items-center justify-between mb-5">
-                <p className="text-sm font-medium text-[#2C1A0E]">New Recipe</p>
-                <button type="button" onClick={() => { setShowForm(false); setForm(emptyForm) }}>
-                  <X size={16} className="text-[#AE9B8E] hover:text-[#7A6155]" />
-                </button>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1A0D05', marginBottom: 16, letterSpacing: '0.01em' }}>
+                Add a food memory
+              </p>
+              <div
+                style={{
+                  border: '2px dashed rgba(196,120,74,0.25)',
+                  borderRadius: 14,
+                  padding: 28,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  marginBottom: 14,
+                  background: '#FDF6EE',
+                  transition: 'border-color 0.2s',
+                }}
+                onClick={() => fileRef.current?.click()}
+              >
+                {preview ? (
+                  <img src={preview} alt="preview" style={{ maxHeight: 180, margin: '0 auto', borderRadius: 10, objectFit: 'cover' }} />
+                ) : (
+                  <>
+                    <p style={{ fontSize: 32, marginBottom: 8 }}>🍜</p>
+                    <p style={{ fontSize: 12, color: '#A89070' }}>Click to choose a photo</p>
+                  </>
+                )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <input
-                  required
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Recipe name *"
-                  className={inp}
-                />
-                <input
-                  value={form.cuisine}
-                  onChange={e => setForm(f => ({ ...f, cuisine: e.target.value }))}
-                  placeholder="Cuisine (e.g. Italian, Korean)"
-                  className={inp}
-                />
-              </div>
-
-              <textarea
-                value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Description (optional)"
-                rows={2}
-                className={`${inp} resize-none mb-3`}
+              <input ref={fileRef} type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
+              <input
+                value={caption}
+                onChange={e => setCaption(e.target.value)}
+                placeholder="What was it? Where? (optional)"
+                className={inp}
+                style={{ marginBottom: 12 }}
               />
-
-              <div className="flex flex-wrap items-center gap-4 mb-5">
-                <select
-                  value={form.difficulty}
-                  onChange={e => setForm(f => ({ ...f, difficulty: e.target.value as RecipeForm['difficulty'] }))}
-                  className={`${inp} w-auto`}
-                >
-                  <option value="">Difficulty</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-[#7A6155] mr-1">Rating:</span>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, rating: n }))}
-                      className={`text-lg transition-colors ${n <= form.rating ? 'text-[#C4784A]' : 'text-[#E8DDD4]'}`}
-                    >★</button>
-                  ))}
-                </div>
-
-                <label className="flex items-center gap-2 text-sm text-[#7A6155] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.tried}
-                    onChange={e => setForm(f => ({ ...f, tried: e.target.checked }))}
-                    className="accent-[#C4784A]"
-                  />
-                  We&apos;ve tried it
-                </label>
-              </div>
-
-              {/* Ingredients */}
-              <div className="mb-4">
-                <p className="text-xs font-medium text-[#7A6155] mb-2">Ingredients</p>
-                <div className="flex flex-col gap-1.5">
-                  {form.ingredients.map((ing, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <span className="text-xs text-[#C4784A]/40 shrink-0">·</span>
-                      <input
-                        value={ing}
-                        onChange={e => {
-                          const updated = [...form.ingredients]
-                          updated[i] = e.target.value
-                          setForm(f => ({ ...f, ingredients: updated }))
-                        }}
-                        placeholder={`Ingredient ${i + 1}`}
-                        className={`${inp} flex-1`}
-                      />
-                      {form.ingredients.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setForm(f => ({ ...f, ingredients: f.ingredients.filter((_, j) => j !== i) }))}
-                          className="text-[#AE9B8E] hover:text-[#C4784A] transition-colors"
-                        >
-                          <X size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, ingredients: [...f.ingredients, ''] }))}
-                    className="text-xs text-[#C4784A]/70 hover:text-[#C4784A] transition-colors text-left mt-1 ml-4"
-                  >
-                    + add ingredient
-                  </button>
-                </div>
-              </div>
-
-              {/* Steps */}
-              <div className="mb-4">
-                <p className="text-xs font-medium text-[#7A6155] mb-2">Steps</p>
-                <div className="flex flex-col gap-2">
-                  {form.steps.map((step, i) => (
-                    <div key={i} className="flex gap-2 items-start">
-                      <span className="text-xs text-[#C4784A]/50 mt-2.5 shrink-0 w-5">{i + 1}.</span>
-                      <textarea
-                        value={step}
-                        onChange={e => {
-                          const updated = [...form.steps]
-                          updated[i] = e.target.value
-                          setForm(f => ({ ...f, steps: updated }))
-                        }}
-                        placeholder={`Step ${i + 1}`}
-                        rows={2}
-                        className={`${inp} flex-1 resize-none`}
-                      />
-                      {form.steps.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setForm(f => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }))}
-                          className="text-[#AE9B8E] hover:text-[#C4784A] transition-colors mt-2"
-                        >
-                          <X size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, steps: [...f.steps, ''] }))}
-                    className="text-xs text-[#C4784A]/70 hover:text-[#C4784A] transition-colors text-left mt-1 ml-5"
-                  >
-                    + add step
-                  </button>
-                </div>
-              </div>
-
-              <textarea
-                value={form.notes}
-                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                placeholder="Notes — tips, variations, where you found it..."
-                rows={2}
-                className={`${inp} resize-none mb-5`}
-              />
-
               <button
                 type="submit"
-                disabled={!form.title.trim() || saving}
-                className="w-full bg-[#C4784A] hover:bg-[#B36840] disabled:opacity-40 text-white py-2 rounded-xl text-sm transition-colors"
+                disabled={!file || uploading}
+                style={{
+                  width: '100%', padding: '10px', borderRadius: 12,
+                  background: '#1A0D05', color: '#F5E6D0',
+                  fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer',
+                  opacity: (!file || uploading) ? 0.4 : 1, transition: 'opacity 0.2s',
+                  letterSpacing: '0.04em',
+                }}
               >
-                {saving ? 'Saving...' : 'Save Recipe'}
+                {uploading ? 'Uploading...' : 'Save Memory'}
               </button>
             </form>
-          )}
 
-          {/* ── Recipe grid ───────────────────────────────────── */}
-          {recipesLoading ? (
-            <div className="text-center py-16 text-[#AE9B8E]">
-              <p className="text-4xl mb-3">📖</p>
-              <p className="text-sm">loading recipes...</p>
-            </div>
-          ) : recipes.length === 0 ? (
-            <div className="text-center py-16 text-[#AE9B8E]">
-              <p className="text-4xl mb-3">📖</p>
-              <p className="text-sm">no recipes yet — add your first one!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recipes.map(recipe => (
-                <div
-                  key={recipe.id}
-                  className="rounded-2xl border border-[#E8DDD4] bg-white p-5 cursor-pointer hover:border-[#C4784A]/30 hover:-translate-y-0.5 transition-all duration-200"
-                  style={{ boxShadow: '0 2px 12px rgba(44,26,14,0.05)' }}
-                  onClick={() => setSelected(recipe)}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h3 className="text-sm font-medium text-[#2C1A0E] leading-snug">{recipe.title}</h3>
-                    {recipe.tried && <span className="text-[10px] text-green-600 shrink-0 mt-0.5">✓ tried</span>}
-                  </div>
-                  {recipe.cuisine && (
-                    <p className="text-xs text-[#C4784A]/70 mb-2">{recipe.cuisine}</p>
-                  )}
-                  {recipe.description && (
-                    <p className="text-xs text-[#7A6155] mb-3 leading-relaxed line-clamp-2">{recipe.description}</p>
-                  )}
-                  <div className="flex items-center justify-between mt-auto">
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <span key={n} className={`text-sm ${n <= recipe.rating ? 'text-[#C4784A]' : 'text-[#E8DDD4]'}`}>★</span>
-                      ))}
-                    </div>
-                    {recipe.difficulty && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${difficultyStyle[recipe.difficulty]}`}>
-                        {recipe.difficulty}
-                      </span>
+            {/* Photo grid — editorial, no tilts */}
+            {photosLoading ? (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: '#A89070' }}>
+                <p style={{ fontSize: 40 }}>🍽️</p>
+                <p style={{ fontSize: 13, marginTop: 12 }}>loading...</p>
+              </div>
+            ) : photos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: '#A89070' }}>
+                <p style={{ fontSize: 40 }}>🍽️</p>
+                <p style={{ fontSize: 13, marginTop: 12 }}>no food memories yet — add your first one!</p>
+              </div>
+            ) : (
+              <div style={{ columns: '3 280px', columnGap: 16 }}>
+                {photos.map(p => (
+                  <div
+                    key={p.id}
+                    onClick={() => setLightbox(p)}
+                    style={{
+                      breakInside: 'avoid',
+                      marginBottom: 16,
+                      borderRadius: 16,
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      position: 'relative',
+                    }}
+                    className="food-photo-card"
+                  >
+                    <img src={p.image_url} alt={p.caption ?? 'food'} style={{ width: '100%', display: 'block' }} />
+                    {p.caption && (
+                      <div
+                        style={{
+                          position: 'absolute', bottom: 0, left: 0, right: 0,
+                          background: 'linear-gradient(to top, rgba(26,13,5,0.8) 0%, transparent 100%)',
+                          padding: '24px 14px 12px',
+                        }}
+                      >
+                        <p style={{ color: '#F5E6D0', fontSize: 12, fontWeight: 400 }}>{p.caption}</p>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══ RECIPES ════════════════════════════════════════════ */}
+        {tab === 'recipes' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+              <p style={{ fontSize: 13, color: '#8B6A48' }}>
+                {recipes.length} recipe{recipes.length !== 1 ? 's' : ''} saved
+              </p>
+              <button
+                onClick={() => setShowForm(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', borderRadius: 12,
+                  background: '#1A0D05', color: '#F5E6D0',
+                  fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}
+              >
+                <Plus size={13} />
+                Add Recipe
+              </button>
             </div>
-          )}
-        </>
-      )}
+
+            {/* ── Add recipe form ──────────────────────────────── */}
+            {showForm && (
+              <form
+                onSubmit={saveRecipe}
+                style={{
+                  background: '#fff',
+                  borderRadius: 20,
+                  padding: 28,
+                  marginBottom: 36,
+                  boxShadow: '0 4px 24px rgba(26,13,5,0.1)',
+                  border: '1px solid rgba(196,120,74,0.15)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#1A0D05' }}>New Recipe</p>
+                  <button type="button" onClick={() => { setShowForm(false); setForm(emptyForm) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <input required value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Recipe name *" className={inp} />
+                  <input value={form.cuisine} onChange={e => setForm(f => ({ ...f, cuisine: e.target.value }))} placeholder="Cuisine (e.g. Italian)" className={inp} />
+                </div>
+
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Description (optional)"
+                  rows={2}
+                  className={inp}
+                  style={{ resize: 'none', marginBottom: 12, display: 'block' }}
+                />
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                  <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value as RecipeForm['difficulty'] }))} className={inp} style={{ width: 'auto' }}>
+                    <option value="">Difficulty</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 12, color: '#8B6A48', marginRight: 4 }}>Rating:</span>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button key={n} type="button" onClick={() => setForm(f => ({ ...f, rating: n }))}
+                        style={{ fontSize: 20, background: 'none', border: 'none', cursor: 'pointer', color: n <= form.rating ? '#C4784A' : '#E0C9A8', padding: 0 }}>
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#8B6A48', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={form.tried} onChange={e => setForm(f => ({ ...f, tried: e.target.checked }))} style={{ accentColor: '#C4784A' }} />
+                    We&apos;ve tried it
+                  </label>
+                </div>
+
+                {/* Ingredients */}
+                <div style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#8B6A48', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Ingredients</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {form.ingredients.map((ing, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'rgba(196,120,74,0.4)', fontSize: 16, flexShrink: 0 }}>·</span>
+                        <input value={ing} onChange={e => { const u = [...form.ingredients]; u[i] = e.target.value; setForm(f => ({ ...f, ingredients: u })) }} placeholder={`Ingredient ${i + 1}`} className={inp} style={{ flex: 1 }} />
+                        {form.ingredients.length > 1 && (
+                          <button type="button" onClick={() => setForm(f => ({ ...f, ingredients: f.ingredients.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070' }}><X size={13} /></button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setForm(f => ({ ...f, ingredients: [...f.ingredients, ''] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#C4784A', textAlign: 'left', padding: '0 24px' }}>
+                      + add ingredient
+                    </button>
+                  </div>
+                </div>
+
+                {/* Steps */}
+                <div style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#8B6A48', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Steps</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {form.steps.map((step, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ color: '#C4784A', fontSize: 12, fontWeight: 600, marginTop: 10, flexShrink: 0, width: 20 }}>{i + 1}.</span>
+                        <textarea value={step} onChange={e => { const u = [...form.steps]; u[i] = e.target.value; setForm(f => ({ ...f, steps: u })) }} placeholder={`Step ${i + 1}`} rows={2} className={inp} style={{ flex: 1, resize: 'none' }} />
+                        {form.steps.length > 1 && (
+                          <button type="button" onClick={() => setForm(f => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070', marginTop: 8 }}><X size={13} /></button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setForm(f => ({ ...f, steps: [...f.steps, ''] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#C4784A', textAlign: 'left', padding: '0 28px' }}>
+                      + add step
+                    </button>
+                  </div>
+                </div>
+
+                <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes — tips, variations, where you found it..." rows={2} className={inp} style={{ resize: 'none', marginBottom: 20, display: 'block' }} />
+
+                <button type="submit" disabled={!form.title.trim() || saving}
+                  style={{ width: '100%', padding: 12, borderRadius: 12, background: '#1A0D05', color: '#F5E6D0', fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer', opacity: (!form.title.trim() || saving) ? 0.4 : 1, letterSpacing: '0.04em' }}>
+                  {saving ? 'Saving...' : 'Save Recipe'}
+                </button>
+              </form>
+            )}
+
+            {/* ── Recipe cards ─────────────────────────────────── */}
+            {recipesLoading ? (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: '#A89070' }}>
+                <p style={{ fontSize: 40 }}>📖</p>
+                <p style={{ fontSize: 13, marginTop: 12 }}>loading recipes...</p>
+              </div>
+            ) : recipes.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: '#A89070' }}>
+                <p style={{ fontSize: 40 }}>📖</p>
+                <p style={{ fontSize: 13, marginTop: 12 }}>no recipes yet — add your first one!</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                {recipes.map(recipe => (
+                  <div
+                    key={recipe.id}
+                    onClick={() => setSelected(recipe)}
+                    className="recipe-card"
+                    style={{
+                      background: '#fff',
+                      borderRadius: 18,
+                      padding: '0',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 16px rgba(26,13,5,0.08)',
+                      border: '1px solid rgba(196,120,74,0.1)',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                    }}
+                  >
+                    {/* Accent bar */}
+                    <div style={{ height: 4, background: 'linear-gradient(to right, #C4784A, #8B4513)' }} />
+                    <div style={{ padding: '20px 22px 22px' }}>
+                      {recipe.cuisine && (
+                        <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 8, fontWeight: 500 }}>
+                          {recipe.cuisine}
+                        </p>
+                      )}
+                      <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1A0D05', lineHeight: 1.3, marginBottom: 8, fontFamily: 'var(--font-serif)' }}>
+                        {recipe.title}
+                      </h3>
+                      {recipe.description && (
+                        <p style={{ fontSize: 12, color: '#8B6A48', lineHeight: 1.6, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {recipe.description}
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <span key={n} style={{ fontSize: 13, color: n <= recipe.rating ? '#C4784A' : '#E0C9A8' }}>★</span>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {recipe.tried && <span style={{ fontSize: 10, color: '#3A5C2E', fontWeight: 500 }}>✓ tried</span>}
+                          {recipe.difficulty && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${difficultyStyle[recipe.difficulty]}`}>
+                              {recipe.difficulty}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* ── Food memory lightbox ─────────────────────────────── */}
       {lightbox && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(26,13,5,0.85)', backdropFilter: 'blur(8px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
         >
           <div
-            className="bg-white rounded-2xl overflow-hidden max-w-lg w-full"
-            style={{ boxShadow: '0 20px 60px rgba(44,26,14,0.2)' }}
             onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', maxWidth: 520, width: '100%', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
           >
-            <img src={lightbox.image_url} alt={lightbox.caption ?? ''} className="w-full object-cover max-h-[60vh]" />
-            <div className="p-4 flex items-center justify-between">
+            <img src={lightbox.image_url} alt={lightbox.caption ?? ''} style={{ width: '100%', objectFit: 'cover', maxHeight: '60vh', display: 'block' }} />
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                {lightbox.caption && <p className="text-sm text-[#2C1A0E] font-medium">{lightbox.caption}</p>}
-                <p className="text-xs text-[#AE9B8E] mt-0.5">
+                {lightbox.caption && <p style={{ fontSize: 14, fontWeight: 500, color: '#1A0D05' }}>{lightbox.caption}</p>}
+                <p style={{ fontSize: 11, color: '#A89070', marginTop: 3 }}>
                   {new Date(lightbox.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
-              <button onClick={() => deletePhoto(lightbox)} className="text-xs text-[#AE9B8E] hover:text-[#C4784A] transition-colors">
+              <button onClick={() => deletePhoto(lightbox)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#A89070', cursor: 'pointer' }}>
                 delete
               </button>
             </div>
@@ -498,51 +497,44 @@ export default function FoodPage() {
       {/* ── Recipe detail modal ──────────────────────────────── */}
       {selected && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setSelected(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(26,13,5,0.85)', backdropFilter: 'blur(8px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
         >
           <div
-            className="bg-white rounded-2xl overflow-hidden max-w-lg w-full max-h-[85vh] overflow-y-auto"
-            style={{ boxShadow: '0 20px 60px rgba(44,26,14,0.2)' }}
             onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', maxWidth: 540, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
           >
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-1">
-                <h2 className="text-xl font-semibold text-[#2C1A0E] leading-snug pr-3">{selected.title}</h2>
-                <button onClick={() => setSelected(null)} className="shrink-0 text-[#AE9B8E] hover:text-[#7A6155]">
-                  <X size={18} />
-                </button>
+            <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0 }} />
+            <div style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1A0D05', lineHeight: 1.2, fontFamily: 'var(--font-serif)', paddingRight: 16 }}>
+                  {selected.title}
+                </h2>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070', flexShrink: 0 }}><X size={18} /></button>
               </div>
+              {selected.cuisine && <p style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 16 }}>{selected.cuisine}</p>}
 
-              {selected.cuisine && (
-                <p className="text-xs text-[#C4784A]/70 mb-3">{selected.cuisine}</p>
-              )}
-
-              <div className="flex items-center flex-wrap gap-3 mb-4">
-                <div className="flex gap-0.5">
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ display: 'flex', gap: 3 }}>
                   {[1, 2, 3, 4, 5].map(n => (
-                    <span key={n} className={`text-base ${n <= selected.rating ? 'text-[#C4784A]' : 'text-[#E8DDD4]'}`}>★</span>
+                    <span key={n} style={{ fontSize: 16, color: n <= selected.rating ? '#C4784A' : '#E0C9A8' }}>★</span>
                   ))}
                 </div>
                 {selected.difficulty && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border ${difficultyStyle[selected.difficulty]}`}>
-                    {selected.difficulty}
-                  </span>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${difficultyStyle[selected.difficulty]}`}>{selected.difficulty}</span>
                 )}
-                {selected.tried && <span className="text-xs text-green-600">✓ we&apos;ve tried it</span>}
+                {selected.tried && <span style={{ fontSize: 12, color: '#3A5C2E', fontWeight: 500 }}>✓ we&apos;ve tried it</span>}
               </div>
 
-              {selected.description && (
-                <p className="text-sm text-[#7A6155] mb-5 leading-relaxed">{selected.description}</p>
-              )}
+              {selected.description && <p style={{ fontSize: 14, color: '#5A3D25', lineHeight: 1.7, marginBottom: 24 }}>{selected.description}</p>}
 
               {selected.ingredients && selected.ingredients.length > 0 && (
-                <div className="mb-5">
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#C4784A]/60 mb-2.5">Ingredients</p>
-                  <ul className="flex flex-col gap-1.5">
+                <div style={{ marginBottom: 24 }}>
+                  <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 12, fontWeight: 600 }}>Ingredients</p>
+                  <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {selected.ingredients.map((ing, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-[#2C1A0E]">
-                        <span className="text-[#C4784A]/40 mt-0.5 shrink-0">·</span>
+                      <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: '#2A1608' }}>
+                        <span style={{ color: '#C4784A', flexShrink: 0, marginTop: 1 }}>·</span>
                         {ing}
                       </li>
                     ))}
@@ -551,13 +543,13 @@ export default function FoodPage() {
               )}
 
               {selected.steps && selected.steps.length > 0 && (
-                <div className="mb-5">
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#C4784A]/60 mb-2.5">Steps</p>
-                  <ol className="flex flex-col gap-3">
+                <div style={{ marginBottom: 24 }}>
+                  <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 12, fontWeight: 600 }}>Steps</p>
+                  <ol style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {selected.steps.map((step, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm text-[#2C1A0E]">
-                        <span className="text-[#C4784A] font-medium shrink-0 mt-px">{i + 1}.</span>
-                        <span className="leading-relaxed">{step}</span>
+                      <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                        <span style={{ color: '#C4784A', fontWeight: 700, fontSize: 13, flexShrink: 0, marginTop: 2 }}>{i + 1}.</span>
+                        <span style={{ fontSize: 14, color: '#2A1608', lineHeight: 1.65 }}>{step}</span>
                       </li>
                     ))}
                   </ol>
@@ -565,17 +557,14 @@ export default function FoodPage() {
               )}
 
               {selected.notes && (
-                <div className="rounded-xl bg-[#FDF0E8] border border-[#E8DDD4] p-3 mb-5">
-                  <p className="text-[10px] tracking-[0.25em] uppercase text-[#C4784A]/60 mb-1.5">Notes</p>
-                  <p className="text-sm text-[#7A6155] leading-relaxed">{selected.notes}</p>
+                <div style={{ background: '#FDF6EE', borderRadius: 12, padding: '14px 18px', marginBottom: 24, borderLeft: '3px solid #C4784A' }}>
+                  <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 6, fontWeight: 600 }}>Notes</p>
+                  <p style={{ fontSize: 13, color: '#5A3D25', lineHeight: 1.65 }}>{selected.notes}</p>
                 </div>
               )}
 
-              <div className="pt-2 border-t border-[#E8DDD4]">
-                <button
-                  onClick={() => deleteRecipe(selected)}
-                  className="text-xs text-[#AE9B8E] hover:text-[#C4784A] transition-colors"
-                >
+              <div style={{ paddingTop: 16, borderTop: '1px solid #F0E0CC' }}>
+                <button onClick={() => deleteRecipe(selected)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#A89070', cursor: 'pointer' }}>
                   delete recipe
                 </button>
               </div>
@@ -583,6 +572,12 @@ export default function FoodPage() {
           </div>
         </div>
       )}
+
+      <style>{`
+        .food-photo-card img { transition: transform 0.4s ease; }
+        .food-photo-card:hover img { transform: scale(1.03); }
+        .recipe-card:hover { transform: translateY(-3px) !important; box-shadow: 0 12px 32px rgba(26,13,5,0.14) !important; }
+      `}</style>
     </div>
   )
 }
