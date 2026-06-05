@@ -51,6 +51,13 @@ export default function FoodPage() {
   const [recipePreview, setRecipePreview]   = useState<string | null>(null)
   const recipeFileRef = useRef<HTMLInputElement>(null)
 
+  const [editing, setEditing]         = useState(false)
+  const [editForm, setEditForm]       = useState<RecipeForm>(emptyForm)
+  const [editFile, setEditFile]       = useState<File | null>(null)
+  const [editPreview, setEditPreview] = useState<string | null>(null)
+  const [updating, setUpdating]       = useState(false)
+  const editFileRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => { fetchPhotos(); fetchRecipes() }, [])
 
   async function fetchPhotos() {
@@ -125,7 +132,66 @@ export default function FoodPage() {
 
   async function deleteRecipe(recipe: Recipe) {
     await supabase.from('recipes').delete().eq('id', recipe.id)
-    setSelected(null); setRecipes(prev => prev.filter(r => r.id !== recipe.id))
+    setSelected(null); setEditing(false)
+    setRecipes(prev => prev.filter(r => r.id !== recipe.id))
+  }
+
+  function startEditing(recipe: Recipe) {
+    setEditForm({
+      title: recipe.title,
+      description: recipe.description ?? '',
+      cuisine: recipe.cuisine ?? '',
+      difficulty: (recipe.difficulty as RecipeForm['difficulty']) ?? '',
+      ingredients: recipe.ingredients?.length ? recipe.ingredients : [''],
+      steps: recipe.steps?.length ? recipe.steps : [''],
+      notes: recipe.notes ?? '',
+      rating: recipe.rating,
+      tried: recipe.tried,
+    })
+    setEditFile(null)
+    setEditPreview(null)
+    setEditing(true)
+  }
+
+  async function updateRecipe(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selected || !editForm.title.trim()) return
+    setUpdating(true)
+
+    let imageUrl = selected.image_url
+    if (editFile) {
+      const ext = editFile.name.split('.').pop()
+      const path = `${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('FoodPhotos').upload(path, editFile)
+      if (upErr) { alert('Photo upload failed: ' + upErr.message); setUpdating(false); return }
+      const { data: { publicUrl } } = supabase.storage.from('FoodPhotos').getPublicUrl(path)
+      imageUrl = publicUrl
+      await supabase.from('food_photos').insert({ image_url: publicUrl, caption: editForm.title.trim() })
+    }
+
+    const { error } = await supabase.from('recipes').update({
+      title: editForm.title.trim(),
+      description: editForm.description.trim() || null,
+      cuisine: editForm.cuisine.trim() || null,
+      difficulty: editForm.difficulty || null,
+      ingredients: editForm.ingredients.filter(i => i.trim()),
+      steps: editForm.steps.filter(s => s.trim()),
+      notes: editForm.notes.trim() || null,
+      rating: editForm.rating,
+      tried: editForm.tried,
+      image_url: imageUrl,
+    }).eq('id', selected.id)
+
+    if (error) { alert('Update failed: ' + error.message); setUpdating(false); return }
+
+    await fetchPhotos()
+    await fetchRecipes()
+    setUpdating(false)
+    setEditing(false)
+    setEditFile(null)
+    setEditPreview(null)
+    // update the selected recipe in-place so modal refreshes
+    setSelected(prev => prev ? { ...prev, ...editForm, difficulty: editForm.difficulty || null, image_url: imageUrl, ingredients: editForm.ingredients.filter(i => i.trim()), steps: editForm.steps.filter(s => s.trim()), description: editForm.description.trim() || null, cuisine: editForm.cuisine.trim() || null, notes: editForm.notes.trim() || null } : null)
   }
 
   const inp = 'w-full px-3 py-2.5 rounded-lg text-sm text-[#1A0D05] placeholder:text-[#A89070] focus:outline-none bg-[#F5EBD8] border border-[#E0C9A8] focus:border-[#C4784A]/60 transition-colors'
@@ -538,85 +604,199 @@ export default function FoodPage() {
         </div>
       )}
 
-      {/* ── Recipe detail modal ──────────────────────────────── */}
+      {/* ── Recipe detail / edit modal ───────────────────────── */}
       {selected && (
         <div
-          onClick={() => setSelected(null)}
+          onClick={() => { setSelected(null); setEditing(false) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(26,13,5,0.85)', backdropFilter: 'blur(8px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', maxWidth: 540, width: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
           >
-            {selected.image_url ? (
-              <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
-            ) : (
-              <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0 }} />
-            )}
-            <div style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
-                <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1A0D05', lineHeight: 1.2, fontFamily: 'var(--font-serif)', paddingRight: 16 }}>
-                  {selected.title}
-                </h2>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070', flexShrink: 0 }}><X size={18} /></button>
-              </div>
-              {selected.cuisine && <p style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 16 }}>{selected.cuisine}</p>}
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <div style={{ display: 'flex', gap: 3 }}>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <span key={n} style={{ fontSize: 16, color: n <= selected.rating ? '#C4784A' : '#E0C9A8' }}>★</span>
-                  ))}
-                </div>
-                {selected.difficulty && (
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${difficultyStyle[selected.difficulty]}`}>{selected.difficulty}</span>
+            {/* ── VIEW MODE ── */}
+            {!editing && (
+              <>
+                {selected.image_url ? (
+                  <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ height: 5, background: 'linear-gradient(to right, #C4784A, #8B4513)', flexShrink: 0 }} />
                 )}
-                {selected.tried && <span style={{ fontSize: 12, color: '#3A5C2E', fontWeight: 500 }}>✓ we&apos;ve tried it</span>}
-              </div>
+                <div style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1A0D05', lineHeight: 1.2, fontFamily: 'var(--font-serif)', paddingRight: 16 }}>
+                      {selected.title}
+                    </h2>
+                    <button onClick={() => { setSelected(null); setEditing(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070', flexShrink: 0 }}><X size={18} /></button>
+                  </div>
+                  {selected.cuisine && <p style={{ fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 16 }}>{selected.cuisine}</p>}
 
-              {selected.description && <p style={{ fontSize: 14, color: '#5A3D25', lineHeight: 1.7, marginBottom: 24 }}>{selected.description}</p>}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <span key={n} style={{ fontSize: 16, color: n <= selected.rating ? '#C4784A' : '#E0C9A8' }}>★</span>
+                      ))}
+                    </div>
+                    {selected.difficulty && (
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${difficultyStyle[selected.difficulty]}`}>{selected.difficulty}</span>
+                    )}
+                    {selected.tried && <span style={{ fontSize: 12, color: '#3A5C2E', fontWeight: 500 }}>✓ we&apos;ve tried it</span>}
+                  </div>
 
-              {selected.ingredients && selected.ingredients.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                  <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 12, fontWeight: 600 }}>Ingredients</p>
-                  <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selected.ingredients.map((ing, i) => (
-                      <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: '#2A1608' }}>
-                        <span style={{ color: '#C4784A', flexShrink: 0, marginTop: 1 }}>·</span>
-                        {ing}
-                      </li>
+                  {selected.description && <p style={{ fontSize: 14, color: '#5A3D25', lineHeight: 1.7, marginBottom: 24 }}>{selected.description}</p>}
+
+                  {selected.ingredients && selected.ingredients.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 12, fontWeight: 600 }}>Ingredients</p>
+                      <ul style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {selected.ingredients.map((ing, i) => (
+                          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: '#2A1608' }}>
+                            <span style={{ color: '#C4784A', flexShrink: 0, marginTop: 1 }}>·</span>
+                            {ing}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selected.steps && selected.steps.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 12, fontWeight: 600 }}>Steps</p>
+                      <ol style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {selected.steps.map((step, i) => (
+                          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                            <span style={{ color: '#C4784A', fontWeight: 700, fontSize: 13, flexShrink: 0, marginTop: 2 }}>{i + 1}.</span>
+                            <span style={{ fontSize: 14, color: '#2A1608', lineHeight: 1.65 }}>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {selected.notes && (
+                    <div style={{ background: '#FDF6EE', borderRadius: 12, padding: '14px 18px', marginBottom: 24, borderLeft: '3px solid #C4784A' }}>
+                      <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 6, fontWeight: 600 }}>Notes</p>
+                      <p style={{ fontSize: 13, color: '#5A3D25', lineHeight: 1.65 }}>{selected.notes}</p>
+                    </div>
+                  )}
+
+                  <div style={{ paddingTop: 16, borderTop: '1px solid #F0E0CC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <button onClick={() => deleteRecipe(selected)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#A89070', cursor: 'pointer' }}>
+                      delete recipe
+                    </button>
+                    <button
+                      onClick={() => startEditing(selected)}
+                      style={{ padding: '7px 18px', borderRadius: 10, background: '#1A0D05', color: '#F5E6D0', fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', letterSpacing: '0.04em' }}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── EDIT MODE ── */}
+            {editing && (
+              <form onSubmit={updateRecipe} style={{ overflowY: 'auto', padding: '28px 32px 32px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#1A0D05' }}>Edit Recipe</p>
+                  <button type="button" onClick={() => setEditing(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070' }}><X size={16} /></button>
+                </div>
+
+                {/* Photo */}
+                <div
+                  style={{ border: '2px dashed rgba(196,120,74,0.25)', borderRadius: 14, overflow: 'hidden', cursor: 'pointer', background: '#FDF6EE', transition: 'border-color 0.2s' }}
+                  onClick={() => editFileRef.current?.click()}
+                >
+                  {editPreview ? (
+                    <img src={editPreview} alt="preview" style={{ width: '100%', maxHeight: 180, objectFit: 'cover', display: 'block' }} />
+                  ) : selected.image_url ? (
+                    <div style={{ position: 'relative' }}>
+                      <img src={selected.image_url} alt={selected.title} style={{ width: '100%', maxHeight: 180, objectFit: 'cover', display: 'block', opacity: 0.6 }} />
+                      <p style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#1A0D05', fontWeight: 500 }}>Click to replace photo</p>
+                    </div>
+                  ) : (
+                    <div style={{ padding: 20, textAlign: 'center' }}>
+                      <p style={{ fontSize: 24, marginBottom: 4 }}>📷</p>
+                      <p style={{ fontSize: 12, color: '#A89070' }}>Add a photo (optional)</p>
+                    </div>
+                  )}
+                </div>
+                <input ref={editFileRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setEditFile(f); setEditPreview(URL.createObjectURL(f)) } }} style={{ display: 'none' }} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <input required value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} placeholder="Recipe name *" className={inp} />
+                  <input value={editForm.cuisine} onChange={e => setEditForm(f => ({ ...f, cuisine: e.target.value }))} placeholder="Cuisine" className={inp} />
+                </div>
+
+                <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} placeholder="Description" rows={2} className={inp} style={{ resize: 'none' }} />
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
+                  <select value={editForm.difficulty} onChange={e => setEditForm(f => ({ ...f, difficulty: e.target.value as RecipeForm['difficulty'] }))} className={inp} style={{ width: 'auto' }}>
+                    <option value="">Difficulty</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 12, color: '#8B6A48', marginRight: 4 }}>Rating:</span>
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button key={n} type="button" onClick={() => setEditForm(f => ({ ...f, rating: n }))}
+                        style={{ fontSize: 20, background: 'none', border: 'none', cursor: 'pointer', color: n <= editForm.rating ? '#C4784A' : '#E0C9A8', padding: 0 }}>★</button>
                     ))}
-                  </ul>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#8B6A48', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={editForm.tried} onChange={e => setEditForm(f => ({ ...f, tried: e.target.checked }))} style={{ accentColor: '#C4784A' }} />
+                    We&apos;ve tried it
+                  </label>
                 </div>
-              )}
 
-              {selected.steps && selected.steps.length > 0 && (
-                <div style={{ marginBottom: 24 }}>
-                  <p style={{ fontSize: 10, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 12, fontWeight: 600 }}>Steps</p>
-                  <ol style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {selected.steps.map((step, i) => (
-                      <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                        <span style={{ color: '#C4784A', fontWeight: 700, fontSize: 13, flexShrink: 0, marginTop: 2 }}>{i + 1}.</span>
-                        <span style={{ fontSize: 14, color: '#2A1608', lineHeight: 1.65 }}>{step}</span>
-                      </li>
+                {/* Ingredients */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#8B6A48', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Ingredients</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {editForm.ingredients.map((ing, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: 'rgba(196,120,74,0.4)', fontSize: 16, flexShrink: 0 }}>·</span>
+                        <input value={ing} onChange={e => { const u = [...editForm.ingredients]; u[i] = e.target.value; setEditForm(f => ({ ...f, ingredients: u })) }} placeholder={`Ingredient ${i + 1}`} className={inp} style={{ flex: 1 }} />
+                        {editForm.ingredients.length > 1 && (
+                          <button type="button" onClick={() => setEditForm(f => ({ ...f, ingredients: f.ingredients.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070' }}><X size={13} /></button>
+                        )}
+                      </div>
                     ))}
-                  </ol>
+                    <button type="button" onClick={() => setEditForm(f => ({ ...f, ingredients: [...f.ingredients, ''] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#C4784A', textAlign: 'left', padding: '0 24px' }}>+ add ingredient</button>
+                  </div>
                 </div>
-              )}
 
-              {selected.notes && (
-                <div style={{ background: '#FDF6EE', borderRadius: 12, padding: '14px 18px', marginBottom: 24, borderLeft: '3px solid #C4784A' }}>
-                  <p style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#C4784A', marginBottom: 6, fontWeight: 600 }}>Notes</p>
-                  <p style={{ fontSize: 13, color: '#5A3D25', lineHeight: 1.65 }}>{selected.notes}</p>
+                {/* Steps */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#8B6A48', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Steps</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {editForm.steps.map((step, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ color: '#C4784A', fontSize: 12, fontWeight: 600, marginTop: 10, flexShrink: 0, width: 20 }}>{i + 1}.</span>
+                        <textarea value={step} onChange={e => { const u = [...editForm.steps]; u[i] = e.target.value; setEditForm(f => ({ ...f, steps: u })) }} placeholder={`Step ${i + 1}`} rows={2} className={inp} style={{ flex: 1, resize: 'none' }} />
+                        {editForm.steps.length > 1 && (
+                          <button type="button" onClick={() => setEditForm(f => ({ ...f, steps: f.steps.filter((_, j) => j !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A89070', marginTop: 8 }}><X size={13} /></button>
+                        )}
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setEditForm(f => ({ ...f, steps: [...f.steps, ''] }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#C4784A', textAlign: 'left', padding: '0 28px' }}>+ add step</button>
+                  </div>
                 </div>
-              )}
 
-              <div style={{ paddingTop: 16, borderTop: '1px solid #F0E0CC' }}>
-                <button onClick={() => deleteRecipe(selected)} style={{ background: 'none', border: 'none', fontSize: 12, color: '#A89070', cursor: 'pointer' }}>
-                  delete recipe
-                </button>
-              </div>
-            </div>
+                <textarea value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes — tips, variations..." rows={2} className={inp} style={{ resize: 'none' }} />
+
+                <div style={{ display: 'flex', gap: 10, paddingTop: 8, borderTop: '1px solid #F0E0CC' }}>
+                  <button type="button" onClick={() => setEditing(false)} style={{ flex: 1, padding: 10, borderRadius: 10, background: '#F5EBD8', color: '#8B6A48', fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={!editForm.title.trim() || updating} style={{ flex: 2, padding: 10, borderRadius: 10, background: '#1A0D05', color: '#F5E6D0', fontSize: 13, fontWeight: 500, border: 'none', cursor: 'pointer', opacity: (!editForm.title.trim() || updating) ? 0.4 : 1 }}>
+                    {updating ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
