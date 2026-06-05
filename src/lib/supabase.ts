@@ -72,6 +72,28 @@ export type Presence = {
   last_seen: string
 }
 
+export type FoodPhoto = {
+  id: string
+  image_url: string
+  caption: string | null
+  created_at: string
+}
+
+export type Recipe = {
+  id: string
+  title: string
+  description: string | null
+  cuisine: string | null
+  difficulty: 'easy' | 'medium' | 'hard' | null
+  ingredients: string[] | null
+  steps: string[] | null
+  notes: string | null
+  image_url: string | null
+  rating: number
+  tried: boolean
+  created_at: string
+}
+
 export type CurrentlyEntry = {
   user_name: 'teo' | 'noelle'
   watching: string | null

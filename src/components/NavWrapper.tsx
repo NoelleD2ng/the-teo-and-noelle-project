@@ -5,6 +5,6 @@ import Nav from './Nav'
 
 export default function NavWrapper() {
   const pathname = usePathname()
-  if (pathname === '/login') return null
+  if (pathname === '/login' || pathname === '/secret') return null
   return <Nav />
 }

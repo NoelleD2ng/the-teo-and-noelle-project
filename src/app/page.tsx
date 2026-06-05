@@ -96,6 +96,13 @@ export default function OurStoryPage() {
           </h1>
           <p className="animate-fade-up-delay-2 mt-7 text-[11px] tracking-[0.45em] uppercase text-[#7A6155]/60 font-light">
             our little world
+            <Link
+              href="/secret"
+              className="ml-2 text-[#FAF8F5] hover:text-[#FAF8F5]/10 transition-colors duration-700 select-none"
+              aria-hidden="true"
+              tabIndex={-1}
+              title=""
+            >·</Link>
           </p>
         </div>
 

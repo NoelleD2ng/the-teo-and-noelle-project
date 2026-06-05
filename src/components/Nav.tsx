@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   Heart, CheckSquare, MapPin, Star,
-  Code2, Camera, Coffee, Radio, BookOpen, CalendarDays, X, Menu, LogOut,
+  Code2, Camera, Coffee, Radio, BookOpen, CalendarDays, UtensilsCrossed, X, Menu, LogOut,
 } from 'lucide-react'
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/projects',    label: 'Projects',  icon: Code2 },
   { href: '/memories',    label: 'Memories',  icon: Camera },
   { href: '/date-ideas',  label: 'Dates',     icon: Coffee },
+  { href: '/food',        label: 'Food',      icon: UtensilsCrossed },
   { href: '/currently',   label: 'Currently', icon: Radio },
   { href: '/calendar',    label: 'Calendar',  icon: CalendarDays },
 ]
